@@ -190,8 +190,8 @@ public class ListNV extends JPanel implements ActionListener, MouseListener{
 		lbQuyen.setFont(font);
 		boxRight6.add(Box.createHorizontalStrut(63));
 		comboxQuyen = new JComboBox<>();
-		comboxQuyen.addItem("Nhân viên");
-		comboxQuyen.addItem("Quản lý");
+		comboxQuyen.addItem("Nhân Viên");
+		comboxQuyen.addItem("Quản Lý");
 		comboxQuyen.setFont(font);
 		boxRight6.add(comboxQuyen);
 		boxRight6.add(Box.createHorizontalStrut(15));

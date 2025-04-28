@@ -177,7 +177,7 @@ public class HomeQL extends JFrame implements ActionListener{
         cardPanel.add(new ListPhim(), "PHIM");
         cardPanel.add(new ThemPhim(), "THEM_PHIM");
         cardPanel.add(new ListLichChieu(), "LICH_CHIEU");
-        cardPanel.add(new ListLichChieu(), "THEM_LICH_CHIEU");
+        cardPanel.add(new ThemLichChieu(), "THEM_LICH_CHIEU");
         cardPanel.add(new ThongKeDT(), "DOANH_THU");
         cardPanel.add(new ThongKeVeBan(), "VE_BAN");
         cardPanel.add(new ThongKePhimChieu(), "PHIM_CHIEU");

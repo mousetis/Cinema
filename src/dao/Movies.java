@@ -158,7 +158,7 @@ public class Movies {
 		
 		//thêm phim
 		public boolean addMovie(model.Movies movie) {
-			String sql = "insert into Employee(MovieID, Title, Duration, Description, AgeRating, ReleaseDate) values(?, ?, ?, ?, ?, ?)";
+			String sql = "insert into Movies(MovieID, Title, Duration, Description, AgeRating, ReleaseDate) values(?, ?, ?, ?, ?, ?)";
 			try {
 				if(movie != null) {
 					
@@ -178,7 +178,7 @@ public class Movies {
 					return res > 0;
 				}
 			} catch (SQLException e) {
-				System.err.println("Can not add employee: " + e.getMessage());
+				System.err.println("Can not add Movie: " + e.getMessage());
 			}
 			return false;
 		}

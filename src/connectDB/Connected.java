@@ -6,10 +6,10 @@ import java.sql.SQLException;
 
 public class Connected {
 	
-	private static String dbName = "Cinema";
-	private static final String url = "jdbc:sqlserver://localhost\\MINHTUAN:1433;databaseName=" + dbName + ";encrypt=false";
+	private static String dbName = "Cinema2";
+	private static final String url = "jdbc:sqlserver://localhost\\CHITOAN:1433;databaseName=" + dbName + ";encrypt=false";
 	private static final String user = "sa";
-	private static final String password = "sapassword";
+	private static final String password = "md140705";
 	
 	private static Connection con = null;
 	

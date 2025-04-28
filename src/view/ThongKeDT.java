@@ -6,6 +6,14 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.sql.Date;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -29,7 +37,7 @@ import javax.swing.table.TableRowSorter;
 
 import com.toedter.calendar.JCalendar;
 
-public class ThongKeDT extends JPanel{
+public class ThongKeDT extends JPanel implements ActionListener{
 	private JLabel lbTitle;
 	private JRadioButton rdNgay;
 	private JRadioButton rdThang;
@@ -173,9 +181,92 @@ public class ThongKeDT extends JPanel{
 //		setLocationRelativeTo(null);
 //		setDefaultCloseOperation(EXIT_ON_CLOSE);
 //		setVisible(true);
+        
+        rdNgay.addActionListener(this);
+        rdThang.addActionListener(this);
+        rdNam.addActionListener(this);
+        btnTimKiem.addActionListener(this);
 	}
+	
+	private void hienThiDoanhThuTheoNgay() {
+	    LocalDate selectedDate = calendar.getDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+	    List<Map<String, Object>> dailyRevenue = dao.Revenue.getDailyRevenue(Date.valueOf(selectedDate));
+	    for (Map<String, Object> revenue : dailyRevenue) {
+	        Object salesDateObject = revenue.get("SalesDate");
+	        if (salesDateObject instanceof java.sql.Date) {
+	            java.sql.Date sqlSalesDate = (java.sql.Date) salesDateObject;
+	            LocalDate localSalesDate = sqlSalesDate.toLocalDate();
+	            tblmodel.addRow(new Object[]{
+	                    DateTimeFormatter.ofPattern("dd/MM/yyyy").format(localSalesDate),
+	                    revenue.get("TicketRevenue"),
+	                    revenue.get("PopcornRevenue"),
+	                    revenue.get("DrinkRevenue"),
+	                    revenue.get("TotalRevenue")
+	            });
+	        } else {
+	            // Xử lý trường hợp dữ liệu không phải là java.sql.Date (nếu có)
+	            System.err.println("Lỗi: Kiểu dữ liệu của SalesDate không phải là java.sql.Date");
+	        }
+	    }
+	}
+
+    private void hienThiDoanhThuTheoThang() {
+        int selectedMonth = (int) spnThang.getValue();
+        int selectedYear = (int) spnNam.getValue();
+        List<Map<String, Object>> monthlyRevenue = null;
+		try {
+			monthlyRevenue = dao.Revenue.getMonthlyRevenue(selectedMonth, selectedYear);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        for (Map<String, Object> revenue : monthlyRevenue) {
+            tblmodel.addRow(new Object[]{
+                    revenue.get("SalesMonthYear"),
+                    revenue.get("TicketRevenue"),
+                    revenue.get("PopcornRevenue"),
+                    revenue.get("DrinkRevenue"),
+                    revenue.get("TotalRevenue")
+            });
+        }
+    }
+
+    private void hienThiDoanhThuTheoNam() {
+        int selectedYear = (int) spnNam.getValue();
+        List<Map<String, Object>> yearlyRevenue = null;
+		try {
+			yearlyRevenue = dao.Revenue.getYearlyRevenue(selectedYear);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        for (Map<String, Object> revenue : yearlyRevenue) {
+            tblmodel.addRow(new Object[]{
+                    revenue.get("SalesYear"),
+                    revenue.get("TicketRevenue"),
+                    revenue.get("PopcornRevenue"),
+                    revenue.get("DrinkRevenue"),
+                    revenue.get("TotalRevenue")
+            });
+        }
+    }
+
 	
 	public static void main(String[] args) {
 		new ThongKeDT();
+	}
+
+	@Override
+	public void actionPerformed(ActionEvent e) {
+		if (e.getSource() == btnTimKiem) {
+            tblmodel.setRowCount(0); // Xóa dữ liệu cũ trên bảng
+            if (rdNgay.isSelected()) {
+                hienThiDoanhThuTheoNgay();
+            } else if (rdThang.isSelected()) {
+                hienThiDoanhThuTheoThang();
+            } else if (rdNam.isSelected()) {
+                hienThiDoanhThuTheoNam();
+            }
+        }	
 	}
 }

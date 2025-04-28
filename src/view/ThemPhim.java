@@ -6,10 +6,14 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.JobAttributes;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -18,6 +22,7 @@ import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
@@ -95,7 +100,7 @@ public class ThemPhim extends JPanel implements ActionListener{
 		//Phần table nằm trên phần ở chính giữa phần khung bên trái
 		Box boxTable = new Box(BoxLayout.Y_AXIS);
 		boxTable.setPreferredSize(new Dimension(450, 600)); //set kích thước cho phần table so với khung
-		String[] colNames = {"Ngày Phát Hành", "Tên phim", "Độ tuổi", "Giá vé", "Thời lượng"};
+		String[] colNames = {"Ngày Phát Hành", "Tên phim", "Độ tuổi", "Thời lượng"};
 		tblmodel = new DefaultTableModel(colNames, 0);
 		table = new JTable(tblmodel);
 		boxTable.add(new JScrollPane(table));
@@ -275,39 +280,120 @@ public class ThemPhim extends JPanel implements ActionListener{
 		add(pnlCent);
 		
 		btnXoaTrang.addActionListener(this);
+		btnThemPhim.addActionListener(this);
+		btnThem.addActionListener(this);
+		btnThemTatCa.addActionListener(this);
+		btnXoa.addActionListener(this);
+		btnXoaTatCa.addActionListener(this);
 	}
 	
 	//xoá trắng
 	public void xoaTrang() {
-		txtNgayPhatHanh.setText("");
+		findDateChooser.setDate(null);
 		txtTenPhim.setText("");
 		rdTren18.setSelected(true);
-		spinnerGiaVe.setValue(0);
 		spinnerThoiLuong.setValue(0);
-		txtNgayPhatHanh.requestFocus();
 	}
 	
 	//thêm phim vào bảng
 	public void addToTable() {
 		try {
-			String releaseDate = txtNgayPhatHanh.getText();
+			Date releaseDate = findDateChooser.getDate();
+			LocalDate local = releaseDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
 			String title = txtTenPhim.getText();
 			int age;
 			if(rdTreEm.isSelected()) {
 				age = 13;
 			}else if(rdTren16.isSelected()) {
-				age = 15;
+				age = 16;
 			}else {
 				age = 18;
 			}
-			Number numberPrice = (Number) spinnerGiaVe.getValue();
-			double price = numberPrice.doubleValue();
 			Number numberDur = (Number) spinnerThoiLuong.getValue();
 			int duration = numberDur.intValue();
 			
-			
+			model.Movies mv = new model.Movies();
+			mv.setAgeRating(age);
+			mv.setDuration(duration);
+			mv.setTitle(title);
+			mv.setReleaseDate(local);
+			tblmodel.addRow(new Object[] {
+					mv.getReleaseDate(),
+					mv.getTitle(),
+					mv.getAgeRating(),
+					mv.getDuration()
+			});
 		} catch (Exception e) {
-			// TODO: handle exception
+			JOptionPane.showMessageDialog(this, "Không thể thêm phim", "Lỗi", JOptionPane.ERROR_MESSAGE);
+			e.getStackTrace();
+		}
+	}
+	//lấy phim
+	public model.Movies getMovie(int row) {
+		model.Movies mv = new model.Movies();
+		String releaseDate = tblmodel.getValueAt(row, 0).toString();
+		String title = tblmodel.getValueAt(row, 1).toString();
+		int ageRating = Integer.parseInt(tblmodel.getValueAt(row, 2).toString());
+		int duration = Integer.parseInt(tblmodel.getValueAt(row, 3).toString());
+		
+		LocalDate local = LocalDate.parse(releaseDate);
+		
+		mv.setAgeRating(ageRating);
+		mv.setDuration(duration);
+		mv.setReleaseDate(local);
+		mv.setTitle(title);
+		
+		return mv;
+	}
+	
+	//thêm lần lượt
+	public void addOne() {
+		int rowSelected = table.getSelectedRow();
+		if(rowSelected == -1) {
+			JOptionPane.showMessageDialog(this, "Vui lòng chọn dòng cần thêm", "Lỗi", JOptionPane.ERROR_MESSAGE);
+		}else {
+			rowSelected = table.convertRowIndexToModel(rowSelected);
+			model.Movies mv = getMovie(rowSelected);
+			if(mv != null) {
+				service.add(mv);
+				tblmodel.removeRow(rowSelected);
+				JOptionPane.showMessageDialog(this, "Lưu thành công!","Thông báo", JOptionPane.INFORMATION_MESSAGE);
+			}else {
+				JOptionPane.showMessageDialog(this, "Lưu thất bại!","Lỗi",JOptionPane.ERROR_MESSAGE);
+			}
+		}
+	}
+	
+	//thêm tất cả
+	public void addAll() {
+		for(int i = 0; i < table.getRowCount(); i++) {
+			model.Movies mv = getMovie(i);
+			if(mv != null) {
+				service.add(mv);
+			}
+		}
+		for(int i = table.getRowCount() - 1; i >= 0; i--) {
+			tblmodel.removeRow(i);
+		}
+		JOptionPane.showMessageDialog(this, "Đã lưu tất cả!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+	}
+	
+	//xoá 1
+	public void deleteOne() {
+		int rowSelected = table.getSelectedRow();
+		if(rowSelected == -1) {
+			JOptionPane.showMessageDialog(this, "Vui lòng chọn dòng cần xoá", "Lỗi", JOptionPane.ERROR_MESSAGE);
+		}else {
+			tblmodel.removeRow(rowSelected);
+			JOptionPane.showMessageDialog(this, "Xoá thành công!","Thông báo", JOptionPane.INFORMATION_MESSAGE);
+		}
+	}
+	
+	//xoá tất cả
+	public void deleteAll() {
+		for(int i = table.getRowCount() - 1; i >= 0; i--) {
+			tblmodel.removeRow(i);
+			JOptionPane.showMessageDialog(this, "Đã xoá tất cả","Thông báo",JOptionPane.INFORMATION_MESSAGE);
 		}
 	}
 	
@@ -320,6 +406,23 @@ public class ThemPhim extends JPanel implements ActionListener{
 		Object o = e.getSource();
 		if(o.equals(btnXoaTrang)) {
 			xoaTrang();
+		}else if(o.equals(btnThemPhim)) {
+			addToTable();
+			xoaTrang();
+		}else if(o.equals(btnThem)) {
+			addOne();
+		}else if(o.equals(btnThemTatCa)) {
+			addAll();
+		}else if(o.equals(btnXoa)) {
+			int confirm = JOptionPane.showConfirmDialog(this, "Bạn có chắc chắn xoá phim này?","Xác nhận", JOptionPane.YES_NO_OPTION);
+			if(confirm == JOptionPane.YES_OPTION) {
+				deleteOne();
+			}
+		}else if(o.equals(btnXoaTatCa)) {
+			int confirm = JOptionPane.showConfirmDialog(this, "Bạn có chắc chắn xoá tất cả?","Xác nhận", JOptionPane.YES_NO_OPTION);
+			if(confirm == JOptionPane.YES_OPTION) {
+				deleteAll();
+			}
 		}
 		
 	}
