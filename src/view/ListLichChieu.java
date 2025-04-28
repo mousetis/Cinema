@@ -6,7 +6,18 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -16,6 +27,7 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
@@ -29,7 +41,11 @@ import javax.swing.table.TableRowSorter;
 
 import com.toedter.calendar.JDateChooser;
 
-public class ListLichChieu extends JPanel implements ActionListener{
+import model.Movies;
+import model.Room;
+import services.Showtimes;
+
+public class ListLichChieu extends JPanel implements ActionListener, MouseListener{
 	private JLabel lbTimNgayChieu;
 	private JLabel lbTimPhongChieu;
 	private JComboBox cboPhongChieu;
@@ -57,8 +73,14 @@ public class ListLichChieu extends JPanel implements ActionListener{
 	private JButton btnHuy;
 	private JLabel lbTitle2;
 	private JButton btnXoaTrang;
+	private services.Showtimes service;
+	private services.Movies serviceMV;
+	private dao.ShowTimes dao;
+	ArrayList<model.Showtimes> list = new ArrayList<model.Showtimes>();
+	private JComboBox cbPhong;
 
 	public ListLichChieu() {
+		service = new Showtimes(dao);
 		Font font = new Font ("Arial",Font.BOLD,15);
 		Font font2 = new Font ("Arial",Font.BOLD,23);
 		Font font3 = new Font ("Arial",Font.BOLD,18);
@@ -96,11 +118,6 @@ public class ListLichChieu extends JPanel implements ActionListener{
 		lbTimPhongChieu.setFont(font);
 		boxLeft3.add(Box.createHorizontalStrut(15));
 		cboPhongChieu = new JComboBox<>();
-//		for(Phong p : ds.layDSPhong()) {
-//			cboPhongChieu.addItem(p.getTenPhong());
-//		}
-		cboPhongChieu.addItem("Phòng 1");
-		cboPhongChieu.addItem("Phòng 2");
 		boxLeft3.add(cboPhongChieu);
 		boxLeft3.add(Box.createHorizontalStrut(15));
 		boxLeft3.add(btnTimKiem = new JButton("Tìm kiếm"));
@@ -112,9 +129,12 @@ public class ListLichChieu extends JPanel implements ActionListener{
 		//Phần table nằm trên phần bên trái
 		Box boxTable = new Box(BoxLayout.Y_AXIS);
 		boxTable.setPreferredSize(new Dimension(450, 600)); //set kích thước cho phần table so với khung
-		String[] colNames = {"Tên phim", "Phòng chiếu", "Ngày chiếu", "Giờ bắt đầu", "Giờ kết thúc"};
+		String[] colNames = {"ID","Tên phim", "Phòng chiếu", "Ngày chiếu", "Giờ bắt đầu", "Giờ kết thúc"};
 		tblmodel = new DefaultTableModel(colNames, 0);
 		table = new JTable(tblmodel);
+		table.getColumnModel().getColumn(0).setMinWidth(0);
+		table.getColumnModel().getColumn(0).setMaxWidth(0);
+		table.getColumnModel().getColumn(0).setWidth(0);
 		boxTable.add(new JScrollPane(table));
 		sorter = new TableRowSorter<TableModel>(tblmodel);
 		table.setFont(font);
@@ -148,11 +168,6 @@ public class ListLichChieu extends JPanel implements ActionListener{
 		lbTenPhim.setFont(font);
 		boxRight1.add(Box.createHorizontalStrut(40));
 		cboTenPhim = new JComboBox<>();
-//		for(Phim p: ds.layPhim()) {
-//			cboTenPhim.addItem(p.getTenPhim());
-//		}
-		cboTenPhim.addItem("Phim1");
-		cboTenPhim.addItem("Phim2");
 		cboTenPhim.setPreferredSize(new Dimension(230, 30));
 		boxRight1.add(cboTenPhim);
 		boxRight.add(boxRight1);
@@ -163,10 +178,9 @@ public class ListLichChieu extends JPanel implements ActionListener{
 		boxRight2.add(lbPhongChieu = new JLabel("Phòng chiếu:"));
 		lbPhongChieu.setFont(font);
 		boxRight2.add(Box.createHorizontalStrut(15));
-		boxRight2.add(txtPhongChieu = new JTextField());
-		txtPhongChieu.setText(cboPhongChieu.getSelectedItem().toString());
-		txtPhongChieu.setPreferredSize(new Dimension(230, 30));
-		txtPhongChieu.setEnabled(false);   // ẩn không cho nhập phòng chiếu
+		cbPhong = new JComboBox<>(); 
+		boxRight2.add(cbPhong);
+		cbPhong.setPreferredSize(new Dimension(230, 30));
 		boxRight.add(boxRight2);
 		boxRight.add(Box.createVerticalStrut(35));
 		
@@ -208,14 +222,14 @@ public class ListLichChieu extends JPanel implements ActionListener{
         editorKT = new JSpinner.DateEditor(spnGioKT, "HH:mm");
         spnGioKT.setEditor(editorKT);
         spnGioKT.setPreferredSize(new Dimension(230, 30));
+        spnGioBD.setValue(new Date());
 		boxRight5.add(spnGioKT);
 		boxRight.add(boxRight5);
 		boxRight.add(Box.createVerticalStrut(35));
 		
-		// Tính giờ kết thúc dựa trên giờ bắt đầu + 2 tiếng (ví dụ)
         Date gioBD = (Date) spnGioBD.getValue();
-        spnGioKT.setValue(new Date(gioBD.getTime() + 2 * 60 * 60 * 1000)); // +2h
-        spnGioKT.setEnabled(false); //Để ôn giờ kết thúc không nhập được
+        spnGioKT.setValue(new Date());
+        spnGioKT.setEnabled(true); //Để ôn giờ kết thúc không nhập được
 		
         //Field các nút chức năng nằm bên phải
 		Box boxRight6 = new Box(BoxLayout.X_AXIS);
@@ -242,35 +256,192 @@ public class ListLichChieu extends JPanel implements ActionListener{
 		
 		//Thêm khung chính vào JFrame
 		add(boxCent);
-		
-		
-		cboPhongChieu.addActionListener(new ActionListener() {
-		    @Override
-		    public void actionPerformed(ActionEvent e) {
-		        if (cboPhongChieu.getSelectedItem() != null) {
-		            txtPhongChieu.setText(cboPhongChieu.getSelectedItem().toString());
-		        }
-		    }
-		});
-		
-		spnGioBD.addChangeListener(e -> {
-		    Date gioBDMoi = (Date) spnGioBD.getValue();
-		    Date gioKTMoi = new Date(gioBDMoi.getTime() + 2 * 60 * 60 * 1000); // +2 tiếng
-		    spnGioKT.setValue(gioKTMoi);
-		});
-
+		loadDataToTable();
+		table.addMouseListener(this);
 		
 		btnXoaTrang.addActionListener(this);
+		btnTimKiem.addActionListener(this);
+		btnSua.addActionListener(this);
+		btnHuy.addActionListener(this);
 	}
 	
+	//đổi từ string sang date
+	public static Date stringToDate(String dateString) {
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+        try {
+            return formatter.parse(dateString);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            return null; 
+        }
+    }
+	
+	public static Date stringToDateTime(String timeString) {
+	    try {
+	        SimpleDateFormat formatter = new SimpleDateFormat("HH:mm");
+	        return formatter.parse(timeString);
+	    } catch (ParseException e) {
+	        e.printStackTrace();
+	        return null;
+	    }
+	}
+	
+	//xoá trắng
 	public void xoaTrang() {
+		tblmodel.setRowCount(0);
 		findDateChooser.setDate(new Date());
 		cboPhongChieu.setSelectedIndex(0);
 		cboTenPhim.setSelectedIndex(0);
+		cbPhong.setSelectedIndex(0);
 		dateChooser.setDate(new Date());
 		Date now = new Date();
 	    spnGioBD.setValue(now);
-		txtPhongChieu.requestFocus();
+	    
+	    list = service.getList();
+		for(model.Showtimes st : list) {
+			tblmodel.addRow(new Object[] {
+				st.getShowtimeID(),
+				st.getMovieID().getTitle(),
+				st.getRoomID().getRoomName(),
+				st.getShowDateTime(),
+				st.getStartedTime(),
+				st.getEndTime()
+			});
+		}
+	}
+	
+	//load lịch chiếu lên bảng
+	public void loadDataToTable() {
+		list = service.getList();
+		Set<String> roomNames = new HashSet<>();
+		Set<String> mvNames = new HashSet<String>();
+		for(model.Showtimes st : list) {
+			tblmodel.addRow(new Object[] {
+				st.getShowtimeID(),
+				st.getMovieID().getTitle(),
+				st.getRoomID().getRoomName(),
+				st.getShowDateTime(),
+				st.getStartedTime(),
+				st.getEndTime()
+			});
+			String room = st.getRoomID().getRoomName();
+			String mv = st.getMovieID().getTitle();
+			if(!roomNames.contains(room)) {
+				cboPhongChieu.addItem(st.getRoomID().getRoomName());
+				cbPhong.addItem(st.getRoomID().getRoomName());
+				roomNames.add(room);
+			}
+			if(!mvNames.contains(mv)) {
+				cboTenPhim.addItem(st.getMovieID().getTitle());
+				mvNames.add(mv);
+			}
+		}
+	}
+	
+	//cập nhật bảng
+	public void updateTable(ArrayList<model.Showtimes> st) {
+		if(!st.isEmpty()) {
+			tblmodel.setRowCount(0);
+			for(model.Showtimes stime : list) {
+				tblmodel.addRow(new Object[] {
+					stime.getMovieID().getTitle(),
+					stime.getRoomID().getRoomName(),
+					stime.getShowDateTime(),
+					stime.getStartedTime(),
+					stime.getEndTime()
+				});
+			}
+		}
+	}
+	
+	//load thông tin lên textField
+	public void loadToTextField() {
+		int rowSelected = table.convertRowIndexToModel(table.getSelectedRow());
+		String mvName = tblmodel.getValueAt(rowSelected, 1).toString();
+		String room = tblmodel.getValueAt(rowSelected, 2).toString();
+		String showtime = tblmodel.getValueAt(rowSelected, 3).toString();
+		String startTime = tblmodel.getValueAt(rowSelected, 4).toString();
+		String endTime = tblmodel.getValueAt(rowSelected, 5).toString();
+		
+		cboTenPhim.setSelectedItem(mvName);
+		cbPhong.setSelectedItem(room);
+		dateChooser.setDate(stringToDate(showtime));
+		spnGioBD.setValue(stringToDateTime(startTime));
+		spnGioKT.setValue(stringToDateTime(endTime));
+	}
+	
+	//tìm kiếm suất chiếu
+	public void  findShowtime() {
+		Date showtime = findDateChooser.getDate();
+		java.sql.Date sqlDate = new java.sql.Date(showtime.getTime());
+		String room = cboPhongChieu.getSelectedItem().toString();
+		list = service.findShowtime(room, sqlDate);
+	}
+	
+	// Hàm để lấy giờ từ JSpinner và chuyển sang LocalTime
+    public LocalTime getLocalTimeFromSpinner(JSpinner spinner) {
+        Date date = (Date) spinner.getValue(); 
+        return LocalTime.ofInstant(date.toInstant(), ZoneId.systemDefault());  
+    }
+
+    // Hàm để lấy ngày từ JDateChooser và chuyển sang LocalDate
+    public LocalDate getLocalDateFromDateChooser(JDateChooser dateChooser) {
+        Date date = dateChooser.getDate();  
+        return LocalDate.ofInstant(date.toInstant(), ZoneId.systemDefault());
+    }
+    
+	//sửa suất chiếu
+	public void updateShowtime() {
+		int rowSelected = table.getSelectedRow();
+		if(rowSelected == -1) {
+			JOptionPane.showMessageDialog(this, "Chọn suất chiếu cần chỉnh sửa","Lỗi",JOptionPane.ERROR_MESSAGE);
+		}else {
+			rowSelected = table.convertRowIndexToModel(rowSelected);
+			String movieName = cboTenPhim.getSelectedItem().toString();
+		    String roomName = cbPhong.getSelectedItem().toString();
+		    LocalDate showtimeDate = getLocalDateFromDateChooser(dateChooser);
+		    LocalTime startTime = getLocalTimeFromSpinner(spnGioBD);
+		    LocalTime endTime = getLocalTimeFromSpinner(spnGioKT);
+		    
+		    model.Showtimes st = new model.Showtimes();
+		    model.Movies mv = new Movies();
+		    model.Room room = new Room();
+		    mv.setMovieID(service.getMovieID(movieName));
+		    room.setRoomID(service.getRoomID(roomName));
+		    String stID = tblmodel.getValueAt(rowSelected, 0).toString();
+		    st.setShowtimeID(stID);
+		    st.setShowDateTime(showtimeDate);
+		    st.setStartedTime(startTime);
+		    st.setEndTime(endTime);
+		    st.setMovieID(mv);
+		    st.setRoomID(room);
+
+		    // Gọi hàm cập nhật từ service
+		    boolean isUpdated = service.update(stID, st);
+
+		    // Kiểm tra kết quả và hiển thị thông báo
+		    if (isUpdated) {
+		        JOptionPane.showMessageDialog(this, "Cập nhật lịch chiếu thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+		    } else {
+		        JOptionPane.showMessageDialog(this, "Cập nhật lịch chiếu thất bại!", "Thông báo", JOptionPane.ERROR_MESSAGE);
+		    }
+		}
+	}
+	
+	//xoá lịch chiếu
+	public void deleteShowtime() {
+		int rowSelected = table.getSelectedRow();
+		if(rowSelected == -1) {
+			JOptionPane.showMessageDialog(this, "Vui lòng chọn phim cần xoá!", "Lỗi",JOptionPane.ERROR_MESSAGE);
+		}else {
+			rowSelected = table.convertRowIndexToModel(rowSelected);
+			String showtimeID = tblmodel.getValueAt(rowSelected, 0).toString();
+			if(service.delete(showtimeID)) {
+				JOptionPane.showMessageDialog(this, "Xoá thành công!","Thông báo",JOptionPane.INFORMATION_MESSAGE);
+			}else {
+				JOptionPane.showMessageDialog(this, "Xoá không thàng công!","Lỗi!",JOptionPane.ERROR_MESSAGE);
+			}
+		}
 	}
 	
 	public static void main(String[] args) {
@@ -282,7 +453,49 @@ public class ListLichChieu extends JPanel implements ActionListener{
 		Object o = e.getSource();
 		if(o.equals(btnXoaTrang)) {
 			xoaTrang();
+		}else if(o.equals(btnTimKiem)) {
+			findShowtime();
+		}else if(o.equals(btnSua)) {
+			int confirm = JOptionPane.showConfirmDialog(this, "Bạn có chắc chắn muốn cập nhật?","Xác nhận",JOptionPane.YES_NO_OPTION);
+			if(confirm == JOptionPane.YES_OPTION) {
+				updateShowtime();
+			}
+		}else if(o.equals(btnHuy)) {
+			int confirm = JOptionPane.showConfirmDialog(this, "Bạn có chắc chắn muốn xoá?","Xác nhận",JOptionPane.YES_NO_OPTION);
+			if(confirm == JOptionPane.YES_OPTION) {
+				deleteShowtime();
+			}
 		}
+		
+	}
+
+	@Override
+	public void mouseClicked(MouseEvent e) {
+		loadToTextField();
+		
+	}
+
+	@Override
+	public void mousePressed(MouseEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void mouseReleased(MouseEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void mouseEntered(MouseEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void mouseExited(MouseEvent e) {
+		// TODO Auto-generated method stub
 		
 	}
 }

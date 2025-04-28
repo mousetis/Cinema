@@ -6,6 +6,9 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Date;
 
 import javax.swing.BorderFactory;
@@ -16,6 +19,7 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
@@ -28,6 +32,11 @@ import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
 
 import com.toedter.calendar.JDateChooser;
+
+import dao.Employee_Dao;
+import model.Movies;
+import model.Room;
+import model.Showtimes;
 
 public class ThemLichChieu extends JPanel implements ActionListener{
 	private JLabel lBTitle;
@@ -56,81 +65,25 @@ public class ThemLichChieu extends JPanel implements ActionListener{
 	private DateEditor editorKT;
 	private JButton btnThemLichChieu;
 	private JButton btnXoaTrang;
+	private services.Employee_Services service;
+	private services.Showtimes serviceST;
+	private dao.ShowTimes daoST;
+	private dao.Employee_Dao dao;
 
 	public ThemLichChieu() {
+		dao = new Employee_Dao();
+		service = new services.Employee_Services(dao);
+		serviceST = new services.Showtimes(daoST);
+		
 		Font font = new Font ("Arial",Font.BOLD,15);
 		Font font2 = new Font ("Atial",Font.BOLD,23);
 		Font font3 = new Font ("Arial",Font.BOLD,18);
 		
-		//Phần khung chính chứa khung bên trái và khung bên phải
-		Box boxCent = new Box(BoxLayout.X_AXIS);
-		
-		//Phần khung bên trái
-		JPanel pnlLeft = new JPanel(new FlowLayout(FlowLayout.CENTER));
-		Box boxLefft = new Box(BoxLayout.Y_AXIS);
-		
-		//Field Title của phần bên trái
-		Box boxLeft1 = new Box(BoxLayout.X_AXIS);
-		boxLeft1.add(lBTitle = new JLabel("DANH SÁCH LỊCH CHIẾU"));
-		lBTitle.setFont(font2);
-		lBTitle.setForeground(Color.BLUE);
-		boxLefft.add(boxLeft1);
-		boxLefft.add(Box.createVerticalStrut(15));
-		
-		//Field chọn ngày chiếu phim nằm trên khung bên trái
-		Box boxLeft2 = new Box(BoxLayout.X_AXIS);
-		findDateChooser = new JDateChooser();
-		findDateChooser.setDateFormatString("dd-MM-yyyy"); // format ngày
-		findDateChooser.setPreferredSize(new Dimension(50, 30)); // chỉnh kích thước
-		boxLeft2.add(lbTimNgayChieu = new JLabel("Ngày chiếu:"));
-		lbTimNgayChieu.setFont(font);
-		boxLeft2.add(Box.createHorizontalStrut(25));
-		boxLeft2.add(findDateChooser);
-		boxLefft.add(boxLeft2);
-		boxLefft.add(Box.createVerticalStrut(15));
-		
-		//Field chọn phòng chiếu nằm trên khung bên trái
-		Box boxLeft3 = new Box(BoxLayout.X_AXIS);
-		boxLeft3.add(lbTimPhongChieu = new JLabel("Phòng chiếu:"));
-		lbTimPhongChieu.setFont(font);
-		boxLeft3.add(Box.createHorizontalStrut(15));
-		cboPhongChieu = new JComboBox<>();
-//		for(Phong p : ds.layDSPhong()) {
-//			cboPhongChieu.addItem(p.getTenPhong());
-//		}
-		cboPhongChieu.addItem("Phòng 1");
-		cboPhongChieu.addItem("Phòng 2");
-		boxLeft3.add(cboPhongChieu);
-		boxLeft3.add(Box.createHorizontalStrut(15));
-		boxLeft3.add(btnTimKiem = new JButton("Tìm kiếm"));
-		btnTimKiem.setFont(font);
-		btnTimKiem.setBackground(Color.GREEN);
-		boxLefft.add(boxLeft3);
-		boxLefft.add(Box.createVerticalStrut(15));
-		
-		//Phần table nằm trên phần bên trái
-		Box boxTable = new Box(BoxLayout.Y_AXIS);
-		boxTable.setPreferredSize(new Dimension(450, 600)); //set kích thước cho phần table so với khung
-		String[] colNames = {"Tên phim", "Phòng chiếu", "Ngày chiếu", "Giờ bắt đầu", "Giờ kết thúc"};
-		tblmodel = new DefaultTableModel(colNames, 0);
-		table = new JTable(tblmodel);
-		boxTable.add(new JScrollPane(table));
-		sorter = new TableRowSorter<TableModel>(tblmodel);
-		table.setFont(font);
-		table.setRowSorter(sorter);
-		boxLefft.add(boxTable);
-		boxLefft.add(Box.createVerticalStrut(15));
-		
-		//Thêm phần khung bên trái vào khung chính
-		pnlLeft.add(boxLefft);
-		boxCent.add(pnlLeft);
-		boxCent.add(Box.createHorizontalStrut(50));
-		
-		//============================================================================
 		//Phần khung bên phải
 		JPanel pnlRight = new JPanel(new FlowLayout(FlowLayout.CENTER));
 		Box boxRight = new Box(BoxLayout.Y_AXIS);
 		pnlRight.setBorder(BorderFactory.createTitledBorder(""));
+		pnlRight.setPreferredSize(new Dimension(600, 500));
 		
 		//Phần title của phần khung bên phải
 		Box boxRight0 = new Box(BoxLayout.X_AXIS);
@@ -147,11 +100,9 @@ public class ThemLichChieu extends JPanel implements ActionListener{
 		lbTenPhim.setFont(font);
 		boxRight1.add(Box.createHorizontalStrut(40));
 		cboTenPhim = new JComboBox<>();
-//		for(Phim p: ds.layPhim()) {
-//			cboTenPhim.addItem(p.getTenPhim());
-//		}
-		cboTenPhim.addItem("Phim1");
-		cboTenPhim.addItem("Phim2");
+		for(Movies p: service.getListMovie()) {
+			cboTenPhim.addItem(p.getTitle());
+		}
 		cboTenPhim.setPreferredSize(new Dimension(230, 30));
 		boxRight1.add(cboTenPhim);
 		boxRight.add(boxRight1);
@@ -162,10 +113,11 @@ public class ThemLichChieu extends JPanel implements ActionListener{
 		boxRight2.add(lbPhongChieu = new JLabel("Phòng chiếu:"));
 		lbPhongChieu.setFont(font);
 		boxRight2.add(Box.createHorizontalStrut(15));
-		boxRight2.add(txtPhongChieu = new JTextField());
-		txtPhongChieu.setPreferredSize(new Dimension(230, 30));
-		txtPhongChieu.setText(cboPhongChieu.getSelectedItem().toString());
-		txtPhongChieu.setEnabled(false);   // ẩn không cho nhập phòng chiếu
+		cboPhongChieu = new JComboBox<>();
+		for(Room p : service.getListRoom()) {
+			cboPhongChieu.addItem(p.getRoomName());
+		}
+		boxRight2.add(cboPhongChieu);
 		boxRight.add(boxRight2);
 		boxRight.add(Box.createVerticalStrut(35));
 		
@@ -192,6 +144,7 @@ public class ThemLichChieu extends JPanel implements ActionListener{
         // Định dạng hiển thị giờ và phút
 		editorBD = new JSpinner.DateEditor(spnGioBD, "HH:mm");   //Tạo một editor (bộ hiển thị/định dạng) cho spinner có định dạng kiểu "giờ:phút"
 		spnGioBD.setEditor(editorBD);  //Gán bộ hiển thị editorBD vừa tạo vào spinner spnGioBD, để nó dùng định dạng giờ phút
+		spnGioBD.setValue(new Date());
 		spnGioBD.setPreferredSize(new Dimension(230, 30));
 		boxRight4.add(spnGioBD);
 		boxRight.add(boxRight4);
@@ -213,8 +166,8 @@ public class ThemLichChieu extends JPanel implements ActionListener{
 		
 		// Tính giờ kết thúc dựa trên giờ bắt đầu + 2 tiếng (ví dụ)
         Date gioBD = (Date) spnGioBD.getValue();
-        spnGioKT.setValue(new Date(gioBD.getTime() + 2 * 60 * 60 * 1000)); // +2h
-        spnGioKT.setEnabled(false); //Để ôn giờ kết thúc không nhập được
+        spnGioKT.setValue(new Date());
+        spnGioKT.setEnabled(true); //Để ôn giờ kết thúc không nhập được
 		
         //Field các nút chức năng nằm bên phải
 		Box boxRight6 = new Box(BoxLayout.X_AXIS);
@@ -232,31 +185,15 @@ public class ThemLichChieu extends JPanel implements ActionListener{
 		
 		//Thêm phần bên phải vào phần khung chính
 		pnlRight.add(boxRight);
-		boxCent.add(pnlRight);
 		
 		//Thêm khung chính vào JFrame
-		add(boxCent);
-		
-		
-		cboPhongChieu.addActionListener(new ActionListener() {
-		    @Override
-		    public void actionPerformed(ActionEvent e) {
-		        if (cboPhongChieu.getSelectedItem() != null) {
-		            txtPhongChieu.setText(cboPhongChieu.getSelectedItem().toString());
-		        }
-		    }
-		});
-		
-		spnGioBD.addChangeListener(e -> {
-		    Date gioBDMoi = (Date) spnGioBD.getValue();
-		    Date gioKTMoi = new Date(gioBDMoi.getTime() + 2 * 60 * 60 * 1000); // +2 tiếng
-		    spnGioKT.setValue(gioKTMoi);
-		});
-		
+		add(pnlRight);
 		btnXoaTrang.addActionListener(this);
+		btnThemLichChieu.addActionListener(this);
 		
 	}
 	
+	//xoá trắng
 	public void xoaTrang() {
 		findDateChooser.setDate(new Date());
 		cboPhongChieu.setSelectedIndex(0);
@@ -265,6 +202,44 @@ public class ThemLichChieu extends JPanel implements ActionListener{
 		Date now = new Date();
 	    spnGioBD.setValue(now);
 		txtPhongChieu.requestFocus();
+	}
+	
+	// Hàm để lấy giờ từ JSpinner và chuyển sang LocalTime
+    public LocalTime getLocalTimeFromSpinner(JSpinner spinner) {
+        Date date = (Date) spinner.getValue(); 
+        return LocalTime.ofInstant(date.toInstant(), ZoneId.systemDefault());  
+    }
+
+    // Hàm để lấy ngày từ JDateChooser và chuyển sang LocalDate
+    public LocalDate getLocalDateFromDateChooser(JDateChooser dateChooser) {
+        Date date = dateChooser.getDate();  
+        return LocalDate.ofInstant(date.toInstant(), ZoneId.systemDefault());
+    }
+    
+	//thêm lịch chiếu
+	public void addShowtimes() {
+		String movieName = cboTenPhim.getSelectedItem().toString();
+		String roomName = cboPhongChieu.getSelectedItem().toString();
+		LocalDate showDateTime = getLocalDateFromDateChooser(dateChooser);
+		LocalTime startTime = getLocalTimeFromSpinner(spnGioBD);
+		LocalTime endTime = getLocalTimeFromSpinner(spnGioKT);
+		
+		model.Showtimes st = new Showtimes();
+		model.Movies mv = new Movies();
+		model.Room room = new Room();
+		mv.setMovieID(serviceST.getMovieID(movieName));
+		room.setRoomID(serviceST.getRoomID(roomName));
+		st.setShowDateTime(showDateTime);
+		st.setMovieID(mv);
+		st.setRoomID(room);
+		st.setStartedTime(startTime);
+		st.setEndTime(endTime);
+		
+		if(serviceST.add(st)) {
+			JOptionPane.showMessageDialog(this, "Thêm thành công!","Thông báo",JOptionPane.INFORMATION_MESSAGE);
+		}else {
+			JOptionPane.showMessageDialog(this, "Thêm không thành công","Lỗi!",JOptionPane.ERROR_MESSAGE);
+		}
 	}
 	
 	public static void main(String[] args) {
@@ -276,6 +251,8 @@ public class ThemLichChieu extends JPanel implements ActionListener{
 		Object o = e.getSource();
 		if(o.equals(btnXoaTrang)) {
 			xoaTrang();
+		}else if(o.equals(btnThemLichChieu)){
+			addShowtimes();
 		}
 		
 	}
